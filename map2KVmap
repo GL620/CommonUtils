@@ -1,0 +1,45 @@
+ import java.util.*;
+ public class ognl2map {
+ 
+ public static void main(String[] args) throws Exception {
+ 
+   Map<String,String> map = geyMap(map);
+ }
+ 
+ public static List<Map<String, String>> geyMap(Map<String, Object> objectMap){
+        List<Map<String, String>> list = new ArrayList<Map<String,String>>();
+        Set<String> keySet = objectMap.keySet();
+        for (String key : keySet) {
+            Object obj = objectMap.get(key);
+            if(obj instanceof String){
+                Map<String, String> map = new HashMap<>();
+                map.put("key", key);
+                map.put("value", obj.toString());
+                list.add(map);
+            }else if (obj instanceof Map) {
+                Map<String, Object> objtMap = (Map<String, Object>) obj;
+                List<Map<String, String>> geyMap = geyMap(objtMap);
+                for (Map<String, String> map2 : geyMap) {
+                    Map<String, String> map = new HashMap<>();
+                    String string = map2.get("key");
+                    map.put("key", key+"."+string);
+                    map.put("value", map2.get("value"));
+                    list.add(map);
+                }
+            }else if (obj instanceof List) {
+                List<Map<String, Object>> listsss = (List<Map<String, Object>>) obj;
+                for (int i = 0; i < listsss.size(); i++) {
+                    Map<String, Object> objtMap = listsss.get(i);
+                    List<Map<String, String>> geyMap = geyMap(objtMap);
+                    for (Map<String, String> map2 : geyMap) {
+                        Map<String, String> map = new HashMap<>();
+                        String string = map2.get("key");
+                        map.put("key", key+"["+i+"]."+string);
+                        map.put("value", map2.get("value"));
+                        list.add(map);
+                    }
+                }
+            }
+        }
+        return list;
+    }}
