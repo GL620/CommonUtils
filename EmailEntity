@@ -1,0 +1,35 @@
+package cn.com.demo.domain;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
+
+import java.io.File;
+import java.io.Serializable;
+import java.util.List;
+
+/***
+ * @author phy
+ * @date 2020-07-04
+ * 描述: 测试集执行出错邮件通知信息实体。
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+public class EmailEntity implements Serializable{
+
+    private static final long serialVersionUID = 1L;
+
+    /**接收者的邮箱地址*/
+    private String toAddress;
+    /**设置邮件主题*/
+    private String subject;
+    /**设置邮件内容*/
+    private String content;
+    /**是否含有附件*/
+    private boolean hasAttach = false;
+    /**附件信息*/
+    private File attach;
+}
