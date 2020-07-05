@@ -1,0 +1,9 @@
+application:
+    email:
+        enabled: true #是否启用发送邮件
+        host: test@163.com #应用邮件服务器地址
+        port: 25 #应用邮件服务器端口
+        username: test@163.com #应用邮件服务器用户名
+        password: xxxxx #应用邮件服务器密码
+        send-nick: 《xxxx通知》 #应用邮件服务器邮件标题
+        hasAttach: false #是否发送附件，测试集失败时打包执行日志发送
