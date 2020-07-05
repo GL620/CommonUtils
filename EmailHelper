@@ -1,0 +1,157 @@
+package cn.com.demo.email;
+
+import cn.com.demo.domain.EmailEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.util.StringUtils;
+
+import javax.activation.DataHandler;
+import javax.activation.DataSource;
+import javax.activation.FileDataSource;
+import javax.mail.*;
+import javax.mail.internet.*;
+import java.util.List;
+import java.util.Properties;
+
+/**
+ * @author phy
+ * @date 2020-07-04
+ * 邮件发送处理类
+ */
+@Component
+public class EmailHelper {
+
+    /***邮件配置信息读取，是否开启邮件发送功能*/
+    @Value("${application.email.enabled}")
+    private String enabled;
+
+    /***邮件地址*/
+    @Value("${application.email.host}")
+    private String host;
+
+    /***邮件端口*/
+    @Value("${application.email.port}")
+    private String port;
+
+    /***邮箱用户名*/
+    @Value("${application.email.username}")
+    private String username;
+
+    /***邮件密码*/
+    @Value("${application.email.password}")
+    private String password;
+
+    /***邮件主题*/
+    @Value("${application.email.send-nick}")
+    private String sendNick;
+
+    private static final Logger log = LoggerFactory.getLogger(EmailHelper.class);
+
+    private  Session session = null;
+    // 接收者分隔标记
+    private static final String RECIPIENCS_TAG = ",";
+
+    /**
+     * 发送邮件
+     * */
+    public void send(EmailEntity emailEntity){
+
+        if (!enabled()){
+            log.info("邮件服务器配置未开启");
+            return;
+        }
+        MimeMessage message = new MimeMessage(getEmailSession());
+        try {
+            message.setFrom(new InternetAddress(username));
+            message.addRecipient(Message.RecipientType.TO, new InternetAddress(emailEntity.getToAddress()));
+            // 收件人地址处理
+            Address[] addresses = transReciply(emailEntity.getToAddress());
+            message.addRecipients(Message.RecipientType.TO,addresses);
+            if (!StringUtils.isEmpty(emailEntity.getSubject())){
+                message.setSubject(emailEntity.getSubject());
+            }else{
+                message.setSubject(sendNick);
+            }
+            Multipart multipart = new MimeMultipart("related");
+            BodyPart contentPart = new MimeBodyPart();
+            contentPart.setDataHandler(new DataHandler(emailEntity.getContent(),"text/html;charset=UTF-8"));
+            multipart.addBodyPart(contentPart);
+            // 添加附件
+            if (emailEntity.isHasAttach()){
+                 BodyPart messageBodyPart = new MimeBodyPart();
+                 DataSource source = new FileDataSource(emailEntity.getAttach());
+                 String attachName = emailEntity.getAttach().getName();
+                 // 添加附件的内容
+                 messageBodyPart.setDataHandler(new DataHandler(source));
+                 //添加附件的标题
+                // 这里很重要，通过下面的Base64编码的转换可以保证你的中文附件标题名在发送时不会变成乱码
+                 sun.misc.BASE64Encoder enc = new sun.misc.BASE64Encoder();
+                 messageBodyPart.setFileName("=?GBK?B?"+
+                 enc.encode(attachName.getBytes()) + "?=");
+                 multipart.addBodyPart(messageBodyPart);
+            }
+
+            // 将multipart对象放到message中
+            message.setContent(multipart);
+            // 保存邮件
+            message.saveChanges();
+            // 发送邮件
+            Transport transport = session.getTransport("smtp");
+            // 连接服务器的邮箱
+            transport.connect(host, username, password);
+            // 把邮件发送出去
+            transport.sendMessage(message, message.getAllRecipients());
+            transport.close();
+
+        } catch (MessagingException e) {
+            log.error("发送者地址加载异常，{}",e.getCause());
+            e.printStackTrace();
+        }
+    }
+
+    protected boolean enabled(){
+            return Boolean.valueOf(enabled);
+    }
+
+    private Session getEmailSession(){
+        if(session != null){
+            return this.session;
+        }else{
+            Properties props = new Properties();
+            // 发送服务器配置
+            props.put("mail.smtp.host",host);
+            // 校验密码
+            props.put("mail.smtp.auth", "true");
+
+            Session defaultInstance = Session.getDefaultInstance(props);
+            // 不开启调试模式
+            defaultInstance.setDebug(false);
+            this.session = defaultInstance;
+
+            return defaultInstance;
+        }
+    }
+
+    /**
+     * 转换接受者地址
+     * */
+    protected Address[] transReciply(String toAddress) throws AddressException {
+        Address[] addresses = null;
+        if (!toAddress.contains(RECIPIENCS_TAG)){
+            addresses =  new Address[1];
+            addresses[0] = new InternetAddress(toAddress);
+            log.debug("接收者地址：【{}】\n",toAddress);
+        }else{
+            String[] addressList = toAddress.split(RECIPIENCS_TAG);
+            addresses = new Address[addressList.length];
+            for (int i = 0; i< addressList.length; i++){
+                addresses[i] = new InternetAddress(addressList[i]);
+                log.debug("接收者编号【{}】 接收地址：【{}】\n",i ,addressList[i]);
+            }
+        }
+        return addresses;
+    }
+}
